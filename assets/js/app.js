@@ -117,7 +117,7 @@ var deployments = L.geoJson(null, {
           })
         );
         femaCorps.addLayer(layer);
-        $("#feature-list tbody").append('<tr class="feature-row" id="' + L.stamp(layer) + '"><td class="feature-name">' + layer.feature.properties.Team + '<img class="pull-left" src="assets/img/red-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;"></td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
+        $("#feature-list tbody").append('<tr class="feature-row fema-corps" id="' + L.stamp(layer) + '"><td class="feature-name">' + layer.feature.properties.Team + '<img class="pull-left" src="assets/img/red-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;"></td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
       }
       if (feature.properties.Status === "AmeriCorps") {
         layer.setIcon(
@@ -129,7 +129,7 @@ var deployments = L.geoJson(null, {
           })
         );
         ameriCorps.addLayer(layer);
-        $("#feature-list tbody").append('<tr class="feature-row" id="' + L.stamp(layer) + '"><td class="feature-name">' + layer.feature.properties.Team + '<img class="pull-left" src="assets/img/blue-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;"></td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
+        $("#feature-list tbody").append('<tr class="feature-row ameri-corps" id="' + L.stamp(layer) + '"><td class="feature-name">' + layer.feature.properties.Team + '<img class="pull-left" src="assets/img/blue-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;"></td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
       }
       var content = "<table class='table table-striped table-bordered table-condensed'>";
       $.each(feature.properties, function(index, prop) {
@@ -271,18 +271,22 @@ map.on("click", function(e) {
 map.on("overlayadd", function(e) {
   if (e.layer === femaCorpsListener) {
     markerClusters.addLayer(femaCorps);
+    $(".fema-corps").show();
   }
   if (e.layer === ameriCorpsListener) {
     markerClusters.addLayer(ameriCorps);
+    $(".ameri-corps").show();
   }
 });
 
 map.on("overlayremove", function(e) {
   if (e.layer === femaCorpsListener) {
     markerClusters.removeLayer(femaCorps);
+    $(".fema-corps").hide();
   }
   if (e.layer === ameriCorpsListener) {
     markerClusters.removeLayer(ameriCorps);
+    $(".ameri-corps").hide();
   }
 });
 
