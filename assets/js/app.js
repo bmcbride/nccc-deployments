@@ -94,72 +94,43 @@ var markerClusters = new L.MarkerClusterGroup({
 });
 
 var femaCorpsListener = L.geoJson(null);
-var femaCorps = L.geoJson(null, {
-  pointToLayer: function (feature, latlng) {
-    return L.marker(latlng, {
-      title: feature.properties.Team,
-      riseOnHover: true,
-      icon: L.icon({
-        iconUrl: "assets/img/red-marker.png",
-        iconSize: [30, 44],
-        iconAnchor: [15, 34],
-        popupAnchor: [0, -40]
-      })
-    });
-  },
-  onEachFeature: function (feature, layer) {
-    if (feature.properties) {
-      var content = "<table class='table table-striped table-bordered table-condensed'>";
-      $.each(feature.properties, function(index, prop) {
-        if (prop === null) {
-          prop = "";
-        } else if (prop.toString().indexOf("https://web.fulcrumapp.com/shares/" + urlParams.id + "/photos/") === 0) {
-          prop = "<a href='" + prop + "' target='blank'>View photos</a>";
-        } else if (prop.toString().indexOf("https://web.fulcrumapp.com/shares/" + urlParams.id + "/videos/") === 0) {
-          prop = "<a href='" + prop + "' target='blank'>View videos</a>";
-        } else if (prop.toString().indexOf("https://web.fulcrumapp.com/shares/" + urlParams.id + "/signatures/") === 0) {
-          prop = "<a href='" + prop + "' target='blank'>View signatures</a>";
-        }
-        if ($.inArray(index, hiddenSystemFields) == -1 && $.inArray(index, hiddenUserFields) == -1 && index !== "Fulcrum Id") {
-          content += "<tr><th>" + index + "</th><td>" + prop + "</td></tr>";
-        }
-      });
-      content += "<table>";
-      layer.on({
-        click: function (e) {
-          $("#feature-title").html(feature.properties.Team);
-          $("#feature-info").html(content);
-          $("#featureModal").modal("show");
-          activeRecord = feature.properties["Fulcrum Id"];
-          highlight.clearLayers().addLayer(L.circleMarker([feature.geometry.coordinates[1], feature.geometry.coordinates[0]], {
-            stroke: false,
-            fillColor: "#00FFFF",
-            fillOpacity: 0.7,
-            radius: 10
-          }));
-        }
-      });
-      $("#feature-list tbody").append('<tr class="feature-row" id="' + L.stamp(layer) + '"><td class="feature-name"><img class="pull-left" src="assets/img/red-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;">' + layer.feature.properties.Team + '</td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
-    }
-  }
-});
-
 var ameriCorpsListener = L.geoJson(null);
-var ameriCorps = L.geoJson(null, {
+var femaCorps = L.geoJson(null);
+var ameriCorps = L.geoJson(null);
+
+var deployments = L.geoJson(null, {
   pointToLayer: function (feature, latlng) {
     return L.marker(latlng, {
       title: feature.properties.Team,
-      riseOnHover: true,
-      icon: L.icon({
-        iconUrl: "assets/img/blue-marker.png",
-        iconSize: [30, 44],
-        iconAnchor: [15, 34],
-        popupAnchor: [0, -40]
-      })
+      riseOnHover: true
     });
   },
   onEachFeature: function (feature, layer) {
     if (feature.properties) {
+      if (feature.properties.Status === "FEMA Corps") {
+        layer.setIcon(
+          L.icon({
+            iconUrl: "assets/img/red-marker.png",
+            iconSize: [30, 44],
+            iconAnchor: [15, 34],
+            popupAnchor: [0, -40]
+          })
+        );
+        femaCorps.addLayer(layer);
+        $("#feature-list tbody").append('<tr class="feature-row" id="' + L.stamp(layer) + '"><td class="feature-name">' + layer.feature.properties.Team + '<img class="pull-left" src="assets/img/red-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;"></td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
+      }
+      if (feature.properties.Status === "AmeriCorps") {
+        layer.setIcon(
+          L.icon({
+            iconUrl: "assets/img/blue-marker.png",
+            iconSize: [30, 44],
+            iconAnchor: [15, 34],
+            popupAnchor: [0, -40]
+          })
+        );
+        ameriCorps.addLayer(layer);
+        $("#feature-list tbody").append('<tr class="feature-row" id="' + L.stamp(layer) + '"><td class="feature-name">' + layer.feature.properties.Team + '<img class="pull-left" src="assets/img/blue-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;"></td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
+      }
       var content = "<table class='table table-striped table-bordered table-condensed'>";
       $.each(feature.properties, function(index, prop) {
         if (prop === null) {
@@ -190,7 +161,6 @@ var ameriCorps = L.geoJson(null, {
           }));
         }
       });
-      $("#feature-list tbody").append('<tr class="feature-row" id="' + L.stamp(layer) + '"><td class="feature-name"><img class="pull-left" src="assets/img/blue-marker-no-shadow.png" width="15" height="22" style="margin-right: 5px;">' + layer.feature.properties.Team + '</td><td style="vertical-align: middle;"><i class="fa fa-chevron-right pull-right"></i></td></tr>');
     }
   }
 });
@@ -274,16 +244,12 @@ function fetchRecords() {
   markerClusters.clearLayers();
   $("#feature-list tbody").empty();
   $.getJSON("https://web.fulcrumapp.com/shares/7936299bd87f5566.geojson?human_friendly=true", function (data) {
-    $.each(data.features, function(index, feature) {
-      if (feature.properties.Status === "FEMA Corps") {
-        femaCorps.addData(feature);
-      } else if (feature.properties.Status === "AmeriCorps") {
-        ameriCorps.addData(feature);
-      }
-    });
+    deployments.addData(data);
     markerClusters.addLayer(femaCorps);
     markerClusters.addLayer(ameriCorps);
-    featureList = new List("features", {valueNames: ["feature-name"]});
+    if (!featureList) {
+      featureList = new List("features", {valueNames: ["feature-name"]});
+    }
     featureList.sort("feature-name", {order:"asc"});
     $("#loading").hide();
   });
@@ -371,7 +337,7 @@ var baseLayers = {
 var overlays = {
   "<img src='assets/img/red-marker-no-shadow.png' width='15' height='22'> FEMA Corps": femaCorpsListener,
   "<img src='assets/img/blue-marker-no-shadow.png' width='15' height='22'> AmeriCorps": ameriCorpsListener,
-  "Deployment Regions": regions
+  'Deployment Regions<br><svg xmlns="http://www.w3.org/2000/svg" height="75" width="110"><g><rect x="10" y="10" width="20" height="10" fill="#0A9F49" fill-opacity="0.5"></rect><text x="32" y="20" font-size="12" fill="#333">Atlantic</text><rect x="10" y="22" width="20" height="10" fill="#F2EB17" fill-opacity="0.5"></rect><text x="32" y="32" font-size="12" fill="#333">North Central</text><rect x="10" y="34" width="20" height="10" fill="#EB1B22" fill-opacity="0.5"></rect><text x="32" y="44" font-size="12" fill="#333">Pacific</text><rect x="10" y="46" width="20" height="10" fill="#2D3091" fill-opacity="0.5"></rect><text x="32" y="55" font-size="12" fill="#333">Southern</text><rect x="10" y="58" width="20" height="10" fill="#DD8026" fill-opacity="0.5"></rect><text x="32" y="66" font-size="12" fill="#333" >Southwest</text></g></svg>': regions
 };
 
 var layerControl = L.control.layers(baseLayers, overlays, {
@@ -390,6 +356,5 @@ $(document).one("ajaxStop", function () {
     map.fitBounds(regions.getBounds());
   }
 
-  featureList = new List("features", {valueNames: ["feature-name"]});
-  featureList.sort("feature-name", {order:"asc"});
+
 });
