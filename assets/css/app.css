@@ -118,7 +118,7 @@ input[type="radio"], input[type="checkbox"] {
     -webkit-hyphens: auto;
       hyphens: auto;
   }
-  .dropdown-menu a i{
+  .dropdown .dropdown-menu a i{
     color: #FFFFFF;
   }
 }
