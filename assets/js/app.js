@@ -1,5 +1,7 @@
 var map, featureList, activeRecord;
 
+var sql = new cartodb.SQL({user: "fulcrum"});
+
 var hiddenSystemFields = ["Created At", "Updated At", "Created By", "Updated By", "System Created At", "System Updated At", "Version", "Project", "Assigned To", "Latitude", "Longitude", "Gps Altitude", "Gps Horizontal Accuracy", "Gps Vertical Accuracy", "Gps Speed", "Gps Course", "Address Sub Thoroughfare", "Address Thoroughfare", "Address Locality", "Address Sub Admin Area", "Address Admin Area", "Address Postal Code", "Address Suite", "Address Country"];
 var hiddenUserFields = ["Photos", "Photos Caption", "Videos", "Videos Caption", "Signatures", "Signatures Caption"];
 
@@ -28,64 +30,6 @@ var mapboxSat = L.tileLayer("http://{s}.tiles.mapbox.com/v3/spatialnetworks.map-
 
 /* Overlay Layers */
 var highlight = L.geoJson(null);
-
-var regions = L.geoJson(null, {
-  style: function (feature) {
-    if (feature.properties.region === "Atlantic") {
-      return {
-        clickable: false,
-        color: "white",
-        weight: 1,
-        opacity: 1,
-        fillColor: "#0A9F49",
-        fillOpacity: 0.5
-      };
-    }
-    else if (feature.properties.region === "North Central") {
-      return {
-        clickable: false,
-        color: "white",
-        weight: 1,
-        opacity: 1,
-        fillColor: "#F2EB17",
-        fillOpacity: 0.5
-      };
-    }
-    else if (feature.properties.region === "Pacific") {
-      return {
-        clickable: false,
-        color: "white",
-        weight: 1,
-        opacity: 1,
-        fillColor: "#EB1B22",
-        fillOpacity: 0.5
-      };
-    }
-    else if (feature.properties.region === "Southern") {
-      return {
-        clickable: false,
-        color: "white",
-        weight: 1,
-        opacity: 1,
-        fillColor: "#2D3091",
-        fillOpacity: 0.5
-      };
-    }
-    else if (feature.properties.region === "Southwest") {
-      return {
-        clickable: false,
-        color: "white",
-        weight: 1,
-        opacity: 1,
-        fillColor: "#DD8026",
-        fillOpacity: 0.5
-      };
-    }
-  }
-});
-$.getJSON("assets/data/regions.geojson", function (data) {
-  regions.addData(data);
-});
 
 var markerClusters = new L.MarkerClusterGroup({
   spiderfyOnMaxZoom: true,
@@ -180,7 +124,11 @@ $("#refresh-btn").click(function() {
 });
 
 $("#full-extent-btn").click(function() {
-  map.fitBounds(regions.getBounds());
+  sql.getBounds("SELECT * FROM nccc_regions WHERE name NOT IN ('Alaska', 'Hawaii')").done(function(bounds) {
+    map.fitBounds(bounds, {
+      maxZoom: 19
+    });
+  });
   return false;
 });
 
@@ -257,10 +205,122 @@ function fetchRecords() {
 
 map = L.map("map", {
   zoom: 10,
-  layers: [mapboxOSM, regions, femaCorpsListener, ameriCorpsListener, markerClusters, highlight],
+  layers: [mapboxOSM, femaCorpsListener, ameriCorpsListener, markerClusters, highlight],
   zoomControl: false
 }).fitWorld();
 map.attributionControl.setPrefix("Powered by <a href='http://fulcrumapp.com/' target='_blank'>Fulcrum</a>");
+
+cartodb.createLayer(map, {
+  user_name: "fulcrum",
+  type: "cartodb",
+  cartodb_logo: false,
+  sublayers: [{
+    sql: "SELECT depregion, ST_Union(the_geom_webmercator) AS the_geom_webmercator FROM nccc_regions GROUP BY depregion",
+    cartocss: "#nccc_regions {"+
+      "polygon-opacity: 0.5;" +
+      "line-color: #FFF;" +
+      "line-width: 1;" +
+      "line-opacity: 1;}"+
+
+      "#nccc_regions::labels {"+
+        "text-name: [depregion];"+
+        "text-face-name: 'DejaVu Sans Book';"+
+        "text-size: 16;"+
+        "text-label-position-tolerance: 10;"+
+        "text-fill: #000;"+
+        "text-halo-fill: #FFF;"+
+        "text-halo-radius: 1;"+
+        "text-dy: 0;"+
+        "text-allow-overlap: true;"+
+        "text-placement: interior;"+
+        "text-placement-type: simple;"+
+      "}"+
+
+      "#nccc_regions[depregion='Atlantic'] {"+
+        "polygon-fill: #0A9F49;"+
+      "}"+
+      "#nccc_regions[depregion='Southern'] {"+
+        "polygon-fill: #2D3091;"+
+      "}"+
+      "#nccc_regions[depregion='North Central'] {"+
+        "polygon-fill: #F2EB17;"+
+      "}"+
+      "#nccc_regions[depregion='Pacific'] {"+
+        "polygon-fill: #EB1B22;"+
+      "}"+
+      "#nccc_regions[depregion='Southwest'] {"+
+        "polygon-fill: #DD8026;"+
+      "}"
+  }]
+}).on("done", function (layer) {
+  deploymentRegions = layer;
+  map.addLayer(deploymentRegions);
+  layerControl.addOverlay(deploymentRegions, "Deployment Regions");
+  deploymentRegions.setZIndex(5);
+});
+
+cartodb.createLayer(map, {
+  user_name: "fulcrum",
+  type: "cartodb",
+  cartodb_logo: false,
+  sublayers: [{
+    sql: "SELECT femaregion, ST_Union(the_geom_webmercator) AS the_geom_webmercator FROM nccc_regions GROUP BY femaregion",
+    cartocss: "#nccc_regions {"+
+      "polygon-opacity: 0.5;" +
+      "line-color: #FFF;" +
+      "line-width: 1;" +
+      "line-opacity: 1;}"+
+
+      "#nccc_regions::labels {"+
+        "text-name: [femaregion];"+
+        "text-face-name: 'DejaVu Sans Book';"+
+        "text-size: 18;"+
+        "text-label-position-tolerance: 10;"+
+        "text-fill: #000;"+
+        "text-halo-fill: #FFF;"+
+        "text-halo-radius: 1;"+
+        "text-dy: 0;"+
+        "text-allow-overlap: true;"+
+        "text-placement: interior;"+
+        "text-placement-type: simple;"+
+      "}"+
+
+      "#nccc_regions[femaregion='I'] {"+
+        "polygon-fill: #CECCFB;"+
+      "}"+
+      "#nccc_regions[femaregion='II'] {"+
+        "polygon-fill: #FFFF95;"+
+      "}"+
+      "#nccc_regions[femaregion='III'] {"+
+        "polygon-fill: #B6E4FB;"+
+      "}"+
+      "#nccc_regions[femaregion='IV'] {"+
+        "polygon-fill: #CCFF9A;"+
+      "}"+
+      "#nccc_regions[femaregion='V'] {"+
+        "polygon-fill: #FFBC78;"+
+      "}"+
+      "#nccc_regions[femaregion='VI'] {"+
+        "polygon-fill: #CBCC66;"+
+      "}"+
+      "#nccc_regions[femaregion='VII'] {"+
+        "polygon-fill: #9ACCFF;"+
+      "}"+
+      "#nccc_regions[femaregion='VIII'] {"+
+        "polygon-fill: #9BCA9C;"+
+      "}"+
+      "#nccc_regions[femaregion='IX'] {"+
+        "polygon-fill: #9BFFCD;"+
+      "}"+
+      "#nccc_regions[femaregion='X'] {"+
+        "polygon-fill: #FEE99A;"+
+      "}"
+  }]
+}).on("done", function (layer) {
+  femaRegions = layer;
+  layerControl.addOverlay(femaRegions, "FEMA Regions");
+  femaRegions.setZIndex(10);
+});
 
 /* Clear feature highlight when map is clicked */
 map.on("click", function(e) {
@@ -340,8 +400,7 @@ var baseLayers = {
 
 var overlays = {
   "<img src='assets/img/red-marker-no-shadow.png' width='15' height='22'> FEMA Corps": femaCorpsListener,
-  "<img src='assets/img/blue-marker-no-shadow.png' width='15' height='22'> AmeriCorps": ameriCorpsListener,
-  'Deployment Regions<br><svg xmlns="http://www.w3.org/2000/svg" height="75" width="110"><g><rect x="10" y="10" width="20" height="10" fill="#0A9F49" fill-opacity="0.5"></rect><text x="32" y="20" font-size="12" fill="#333">Atlantic</text><rect x="10" y="22" width="20" height="10" fill="#F2EB17" fill-opacity="0.5"></rect><text x="32" y="32" font-size="12" fill="#333">North Central</text><rect x="10" y="34" width="20" height="10" fill="#EB1B22" fill-opacity="0.5"></rect><text x="32" y="44" font-size="12" fill="#333">Pacific</text><rect x="10" y="46" width="20" height="10" fill="#2D3091" fill-opacity="0.5"></rect><text x="32" y="55" font-size="12" fill="#333">Southern</text><rect x="10" y="58" width="20" height="10" fill="#DD8026" fill-opacity="0.5"></rect><text x="32" y="66" font-size="12" fill="#333" >Southwest</text></g></svg>': regions
+  "<img src='assets/img/blue-marker-no-shadow.png' width='15' height='22'> AmeriCorps": ameriCorpsListener
 };
 
 var layerControl = L.control.layers(baseLayers, overlays, {
@@ -357,7 +416,11 @@ $(document).one("ajaxStop", function () {
   if (urlParams.id && urlParams.id.length > 0) {
     zoomToFeature(urlParams.id);
   } else {
-    map.fitBounds(regions.getBounds());
+    sql.getBounds("SELECT * FROM nccc_regions WHERE name NOT IN ('Alaska', 'Hawaii')").done(function(bounds) {
+      map.fitBounds(bounds, {
+        maxZoom: 19
+      });
+    });
   }
 
 
